@@ -1,9 +1,9 @@
-const suits = ["♦", "♣", "♥", "♠"];
+const suits = ["♦", "♣", "♥", "♠"]; // Big2 suit order
 const ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
 
 const players = [
-  { id: 0, name: "You", hand: [], pickedDeck: null, isCpu: false },
-  { id: 1, name: "Player 2", hand: [], pickedDeck: null, isCpu: false }
+  { id: 0, name: "Player 1", hand: [], pickedDeck: null },
+  { id: 1, name: "Player 2", hand: [], pickedDeck: null }
 ];
 
 const state = {
@@ -15,24 +15,41 @@ const state = {
   openingPending: true,
   passCount: 0,
   manualArrange: false,
-  soloMode: true,
-  winner: null,
 };
 
 const el = {
-  setup: document.getElementById("setup"), game: document.getElementById("game"), deckPick: document.getElementById("deckPick"),
-  autoArrange: document.getElementById("autoArrange"), manualArrange: document.getElementById("manualArrange"), soloMode: document.getElementById("soloMode"),
-  startDeal: document.getElementById("startDeal"), turnTitle: document.getElementById("turnTitle"), pileLabel: document.getElementById("pileLabel"),
-  manualHint: document.getElementById("manualHint"), hand: document.getElementById("hand"), playBtn: document.getElementById("playBtn"),
-  passBtn: document.getElementById("passBtn"), arrangeBtn: document.getElementById("arrangeBtn"), lastAction: document.getElementById("lastAction"), log: document.getElementById("log"),
+  setup: document.getElementById("setup"),
+  game: document.getElementById("game"),
+  deckPick: document.getElementById("deckPick"),
+  autoArrange: document.getElementById("autoArrange"),
+  manualArrange: document.getElementById("manualArrange"),
+  startDeal: document.getElementById("startDeal"),
+  turnTitle: document.getElementById("turnTitle"),
+  pileLabel: document.getElementById("pileLabel"),
+  manualHint: document.getElementById("manualHint"),
+  hand: document.getElementById("hand"),
+  playBtn: document.getElementById("playBtn"),
+  passBtn: document.getElementById("passBtn"),
+  arrangeBtn: document.getElementById("arrangeBtn"),
+  lastAction: document.getElementById("lastAction"),
+  log: document.getElementById("log"),
 };
 
-const createDeck = () => suits.flatMap((s) => ranks.map((r) => ({ r, s, value: ranks.indexOf(r) * 4 + suits.indexOf(s) })));
-const sortHand = (h) => h.sort((a, b) => a.value - b.value);
-const cardText = (c) => `${c.r}${c.s}`;
-const isRed = (s) => s === "♦" || s === "♥";
+function createDeck() {
+  return suits.flatMap((s) => ranks.map((r) => ({ r, s, value: ranks.indexOf(r) * 4 + suits.indexOf(s) })));
+}
 
-function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function sortHand(hand) { hand.sort((a, b) => a.value - b.value); }
+function cardText(c) { return `${c.r}${c.s}`; }
+function isRed(suit) { return suit === "♦" || suit === "♥"; }
 
 function initDeckPick() {
   el.deckPick.innerHTML = "";
@@ -47,23 +64,25 @@ function initDeckPick() {
 }
 
 function pickDeck(deckId) {
-  const unpicked = players.filter((p) => p.pickedDeck === null);
-  if (!unpicked.length) return;
-  const picker = unpicked[0];
+  const unpickedPlayers = players.filter((p) => p.pickedDeck === null);
+  if (!unpickedPlayers.length) return;
+  const picker = unpickedPlayers[0]; // simulated first click wins
   picker.pickedDeck = deckId;
+
   const other = players.find((p) => p.id !== picker.id);
   if (other.pickedDeck === null) other.pickedDeck = deckId === 0 ? 1 : 0;
-  [...el.deckPick.children].forEach((c) => { c.classList.add("locked", "selected"); c.disabled = true; });
+
+  [...el.deckPick.children].forEach((c) => {
+    const isChosen = Number(c.dataset.deck) === deckId || Number(c.dataset.deck) === (deckId === 0 ? 1 : 0);
+    c.classList.toggle("selected", isChosen);
+    c.classList.add("locked");
+    c.disabled = true;
+  });
   el.startDeal.disabled = false;
   addLog(`${picker.name} picked ${deckId === 0 ? "Deck A" : "Deck B"}; remaining deck auto-assigned.`);
 }
 
 function deal() {
-  state.soloMode = el.soloMode.checked;
-  players[0].name = "You";
-  players[1].name = state.soloMode ? "CPU" : "Player 2";
-  players[1].isCpu = state.soloMode;
-
   const deck = shuffle(createDeck());
   players[0].hand = deck.slice(0, 26);
   players[1].hand = deck.slice(26);
@@ -74,51 +93,51 @@ function deal() {
   state.pile = null;
   state.lastPlayedBy = null;
   state.passCount = 0;
-  state.winner = null;
   state.phase = "play";
 
   el.setup.classList.add("hidden");
   el.game.classList.remove("hidden");
   render();
   addLog(`Cards dealt. ${players[state.currentPlayer].name} owns 3♦ and must click Play to start.`);
-  maybeCpuTurn();
 }
 
-const find3DiamondOwner = () => players.findIndex((p) => p.hand.some((c) => c.r === "3" && c.s === "♦"));
+function find3DiamondOwner() {
+  return players.findIndex((p) => p.hand.some((c) => c.r === "3" && c.s === "♦"));
+}
 
 function render() {
   const p = players[state.currentPlayer];
-  const isCpuTurn = p.isCpu;
   el.turnTitle.textContent = `${p.name}'s Turn`;
   el.pileLabel.textContent = `Pile: ${state.pile ? state.pile.cards.map(cardText).join(" ") : "none"}`;
-  el.manualHint.textContent = state.openingPending
-    ? "Opening move must include 3♦. Player must manually click Play (not automatic)."
-    : "Manual pass required when you cannot beat current hand.";
 
-  el.playBtn.disabled = isCpuTurn || !!state.winner;
-  el.passBtn.disabled = isCpuTurn || !!state.winner;
-  el.arrangeBtn.disabled = isCpuTurn || !!state.winner;
+  if (state.openingPending) {
+    el.manualHint.textContent = "Opening move must include 3♦. Player must manually click Play (not automatic).";
+  } else {
+    el.manualHint.textContent = "Manual pass required when you cannot beat current hand.";
+  }
 
   el.hand.innerHTML = "";
-  const handView = state.soloMode && isCpuTurn ? p.hand.map(() => ({ hidden: true })) : p.hand;
-  handView.forEach((card, i) => {
+  p.hand.forEach((card, i) => {
     const node = document.createElement("button");
-    node.className = "card";
-    if (!card.hidden) {
-      node.className = `card ${isRed(card.s) ? "red" : ""}`;
-      if (state.selected.includes(i)) node.classList.add("selected");
-      node.textContent = cardText(card);
-      node.onclick = () => toggleSelect(i);
-    } else {
-      node.textContent = "🂠";
-      node.disabled = true;
-    }
+    node.className = `card ${isRed(card.s) ? "red" : ""}`;
+    if (state.selected.includes(i)) node.classList.add("selected");
+    node.textContent = cardText(card);
+    node.onclick = () => toggleSelect(i);
     el.hand.appendChild(node);
   });
 }
 
-function toggleSelect(i) { const at = state.selected.indexOf(i); at >= 0 ? state.selected.splice(at, 1) : state.selected.push(i); render(); }
-const selectedCards = () => state.selected.map((i) => players[state.currentPlayer].hand[i]).sort((a, b) => a.value - b.value);
+function toggleSelect(i) {
+  const at = state.selected.indexOf(i);
+  if (at >= 0) state.selected.splice(at, 1);
+  else state.selected.push(i);
+  render();
+}
+
+function selectedCards() {
+  const p = players[state.currentPlayer];
+  return state.selected.map((i) => p.hand[i]).sort((a, b) => a.value - b.value);
+}
 
 function validatePlay(cards) {
   if (cards.length !== 1) return { ok: false, msg: "This simple version currently supports single-card plays only." };
@@ -128,32 +147,31 @@ function validatePlay(cards) {
   return { ok: true };
 }
 
-function applyPlay(cards) {
+function playSelected() {
+  const cards = selectedCards();
+  const verdict = validatePlay(cards);
+  if (!verdict.ok) return setAction(verdict.msg);
+
   const p = players[state.currentPlayer];
-  const indexes = cards.map((c) => p.hand.indexOf(c)).sort((a, b) => b - a);
+  const indexes = [...state.selected].sort((a, b) => b - a);
   indexes.forEach((i) => p.hand.splice(i, 1));
   state.pile = { cards, by: p.id };
   state.lastPlayedBy = p.id;
   state.openingPending = false;
   state.passCount = 0;
   state.selected = [];
+
   addLog(`${p.name} played ${cards.map(cardText).join(" ")}`);
 
   if (!p.hand.length) {
-    state.winner = p.id;
     setAction(`${p.name} wins!`);
     addLog(`${p.name} won the game.`);
-    render();
+    el.playBtn.disabled = true;
+    el.passBtn.disabled = true;
     return;
   }
-  nextPlayer();
-}
 
-function playSelected() {
-  const cards = selectedCards();
-  const verdict = validatePlay(cards);
-  if (!verdict.ok) return setAction(verdict.msg);
-  applyPlay(cards);
+  nextPlayer();
 }
 
 function passTurn() {
@@ -169,39 +187,36 @@ function passTurn() {
     state.passCount = 0;
     setAction(`Round reset. ${lead.name} leads next.`);
     render();
-    maybeCpuTurn();
     return;
   }
   nextPlayer();
 }
 
-function nextPlayer() { state.currentPlayer = (state.currentPlayer + 1) % 2; setAction("Turn changed."); render(); maybeCpuTurn(); }
-function arrangeCurrent() { sortHand(players[state.currentPlayer].hand); state.selected = []; render(); setAction("Hand arranged."); }
+function nextPlayer() {
+  state.currentPlayer = (state.currentPlayer + 1) % 2;
+  setAction("Turn changed.");
+  render();
+}
 
-function maybeCpuTurn() {
+function arrangeCurrent() {
   const p = players[state.currentPlayer];
-  if (!p.isCpu || state.winner !== null) return;
-  setTimeout(() => {
-    const card = chooseCpuCard(p.hand);
-    if (!card) {
-      passTurn();
-      return;
-    }
-    applyPlay([card]);
-  }, 500);
+  sortHand(p.hand);
+  state.selected = [];
+  render();
+  setAction("Hand arranged.");
 }
 
-function chooseCpuCard(hand) {
-  const sorted = [...hand].sort((a, b) => a.value - b.value);
-  if (state.openingPending) return sorted.find((c) => c.r === "3" && c.s === "♦") || null;
-  if (!state.pile) return sorted[0] || null;
-  return sorted.find((c) => c.value > state.pile.cards[0].value) || null;
+function addLog(msg) {
+  const item = document.createElement("p");
+  item.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.log.prepend(item);
 }
-
-function addLog(msg) { const item = document.createElement("p"); item.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`; el.log.prepend(item); }
 function setAction(msg) { el.lastAction.textContent = msg; }
 
-el.manualArrange.onclick = () => { state.manualArrange = !state.manualArrange; setAction(`Manual arrange mode ${state.manualArrange ? "enabled" : "disabled"}.`); };
+el.manualArrange.onclick = () => {
+  state.manualArrange = !state.manualArrange;
+  setAction(`Manual arrange mode ${state.manualArrange ? "enabled" : "disabled"}.`);
+};
 el.startDeal.onclick = deal;
 el.playBtn.onclick = playSelected;
 el.passBtn.onclick = passTurn;
