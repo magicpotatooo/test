@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2-Player Big2</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Big2 (2 Players)</h1>
+      <p class="muted">Manual pass + manual opening play with 3♦, simple UI.</p>
+    </header>
+
+    <section id="setup" class="panel">
+      <h2>Pre-game</h2>
+      <div class="row">
+        <label><input type="checkbox" id="autoArrange" checked /> Auto arrange after deal</label>
+        <button id="manualArrange">Manual arrange mode</button>
+      </div>
+      <p class="muted">Both players pick deck at the same time. First picker locks one deck; other gets remaining deck automatically.</p>
+      <div class="deck-pick" id="deckPick"></div>
+      <button id="startDeal" disabled>Deal Cards</button>
+    </section>
+
+    <section id="game" class="panel hidden">
+      <h2 id="turnTitle"></h2>
+      <div class="status-row">
+        <span id="pileLabel">Pile: none</span>
+        <span id="lastAction">-</span>
+      </div>
+      <div id="manualHint" class="hint"></div>
+      <div class="hand" id="hand"></div>
+      <div class="actions">
+        <button id="playBtn">Play Selected</button>
+        <button id="passBtn">Pass</button>
+        <button id="arrangeBtn">Arrange Hand</button>
+      </div>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
