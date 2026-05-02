@@ -25,6 +25,7 @@ const players = [
   { id: 0, name: "Player 1", hand: [], pickedDeck: null },
   { id: 1, name: "Player 2", hand: [], pickedDeck: null }
 ];
+const recordStorageKey = "big2WinRecords";
 
 const state = {
   phase: "deal",
@@ -52,7 +53,13 @@ const el = {
   newGameBtn: document.getElementById("newGameBtn"),
   lastAction: document.getElementById("lastAction"),
   log: document.getElementById("log"),
+  player1Wins: document.getElementById("player1Wins"),
+  player2Wins: document.getElementById("player2Wins"),
+  recordList: document.getElementById("recordList"),
+  clearRecordsBtn: document.getElementById("clearRecordsBtn"),
 };
+
+let winRecords = loadWinRecords();
 
 function createDeck() {
   return suits.flatMap((s) => ranks.map((r) => ({ r, s, value: ranks.indexOf(r) * 4 + suits.indexOf(s) })));
@@ -359,6 +366,7 @@ function playSelected() {
   if (!p.hand.length) {
     setAction(`${p.name} wins!`);
     addLog(`${p.name} won the game.`);
+    recordWin(p);
     el.playBtn.disabled = true;
     el.passBtn.disabled = true;
     el.arrangeBtn.disabled = true;
@@ -408,6 +416,67 @@ function addLog(msg) {
 }
 function setAction(msg) { el.lastAction.textContent = msg; }
 
+function loadWinRecords() {
+  try {
+    return JSON.parse(globalThis.localStorage?.getItem(recordStorageKey) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveWinRecords() {
+  try {
+    globalThis.localStorage?.setItem(recordStorageKey, JSON.stringify(winRecords));
+  } catch {
+    // Storage can be unavailable in private or embedded contexts; the dashboard still works in memory.
+  }
+}
+
+function clearStoredWinRecords() {
+  try {
+    globalThis.localStorage?.removeItem(recordStorageKey);
+  } catch {
+    // Storage can be unavailable in private or embedded contexts; clearing memory still resets the dashboard.
+  }
+}
+
+function recordWin(player) {
+  winRecords.unshift({
+    playerId: player.id,
+    playerName: player.name,
+    date: new Date().toLocaleString(),
+  });
+  saveWinRecords();
+  renderWinRecords();
+}
+
+function renderWinRecords() {
+  const totals = players.map((player) => winRecords.filter((record) => record.playerId === player.id).length);
+  el.player1Wins.textContent = String(totals[0]);
+  el.player2Wins.textContent = String(totals[1]);
+  el.recordList.innerHTML = "";
+
+  if (!winRecords.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No wins recorded yet.";
+    el.recordList.appendChild(empty);
+    return;
+  }
+
+  winRecords.forEach((record) => {
+    const item = document.createElement("p");
+    item.textContent = `${record.playerName} won on ${record.date}`;
+    el.recordList.appendChild(item);
+  });
+}
+
+function clearWinRecords() {
+  winRecords = [];
+  clearStoredWinRecords();
+  renderWinRecords();
+}
+
 function newGame() {
   players.forEach((player) => {
     player.hand = [];
@@ -441,5 +510,7 @@ el.playBtn.onclick = playSelected;
 el.passBtn.onclick = passTurn;
 el.arrangeBtn.onclick = arrangeCurrent;
 el.newGameBtn.onclick = newGame;
+el.clearRecordsBtn.onclick = clearWinRecords;
 
 initDeckPick();
+renderWinRecords();
