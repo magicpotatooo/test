@@ -10,18 +10,17 @@
   <main class="app">
     <header>
       <h1>Big2 (2 Players)</h1>
-      <p class="muted">Manual pass + manual opening play with 3♦, simple UI.</p>
+      <p class="muted">Manual opening play with 3♦, matching singles/pairs/triples, and ranked 5-card combos.</p>
     </header>
 
     <section id="setup" class="panel">
       <h2>Pre-game</h2>
       <div class="row">
         <label><input type="checkbox" id="autoArrange" checked /> Auto arrange after deal</label>
-        <button id="manualArrange">Manual arrange mode</button>
       </div>
-      <p class="muted">Both players pick deck at the same time. First picker locks one deck; other gets remaining deck automatically.</p>
-      <div class="deck-pick" id="deckPick"></div>
-      <button id="startDeal" disabled>Deal Cards</button>
+      <p class="muted">Deal first, then pick a deck. First picker locks one deck; the other player gets the remaining deck automatically.</p>
+      <button id="startDeal">Deal Cards</button>
+      <div class="deck-pick hidden" id="deckPick"></div>
     </section>
 
     <section id="game" class="panel hidden">
@@ -36,6 +35,7 @@
         <button id="playBtn">Play Selected</button>
         <button id="passBtn">Pass</button>
         <button id="arrangeBtn">Arrange Hand</button>
+        <button id="newGameBtn" class="secondary hidden">New Game</button>
       </div>
       <div id="log" class="log"></div>
     </section>

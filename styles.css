@@ -7,16 +7,34 @@ body { font-family: system-ui, sans-serif; background: #f3f6fb; margin: 0; color
 button { border: 0; border-radius: 8px; padding: .5rem .9rem; background: #2563eb; color: #fff; cursor: pointer; transition: transform .08s ease, opacity .2s ease; }
 button:hover { transform: translateY(-1px); }
 button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+button.secondary { background: #111827; }
 .muted { color: #6b7280; }
 .deck-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: .8rem 0; }
+.deck-pick.hidden { display: none; }
 .deck { border: 2px dashed #93c5fd; border-radius: 10px; padding: 1rem; text-align: center; min-height: 110px; display: grid; place-items: center; }
 .deck.selected { border-color: #2563eb; background: #eff6ff; }
 .deck.locked { opacity: .55; }
-.hand { display: flex; gap: .4rem; flex-wrap: wrap; margin: .9rem 0; }
-.card { width: 46px; height: 68px; border-radius: 8px; border: 1px solid #9ca3af; display: grid; place-items: center; background: #fff; user-select: none; transition: transform .12s ease, box-shadow .12s ease; }
+.hand { --card-overlap: 76px; --drag-gap: 64px; display: flex; flex-wrap: nowrap; align-items: flex-start; margin: 1rem 0; min-height: 220px; overflow-x: auto; padding: 1.8rem .8rem 1rem 2rem; scroll-padding-left: 2rem; }
+.hand.drop-at-end::after { content: ""; flex: 0 0 var(--drag-gap); }
+.card { position: relative; flex: 0 0 auto; width: 129px; height: 177px; border-radius: 8px; border: 1px solid #9ca3af; display: block; background: #fff; color: #111827; user-select: none; cursor: grab; padding: .75rem; box-shadow: 0 2px 5px rgba(15,23,42,.1); transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease, margin-left .12s ease; }
+.card + .card { margin-left: calc(var(--card-overlap) * -1); }
+.card:active { cursor: grabbing; }
 .card.red { color: #b91c1c; }
-.card.selected { transform: translateY(-8px); box-shadow: 0 10px 14px rgba(0,0,0,.15); border-color: #2563eb; }
+.card.black { color: #111827; }
+.card:hover { transform: translateY(-14px); }
+.card.selected { transform: translateY(-14px); box-shadow: 0 12px 18px rgba(0,0,0,.18); border-color: #2563eb; }
+.card.dragging { opacity: .45; }
+.card.drop-gap-before { margin-left: var(--drag-gap); }
+.card + .card.drop-gap-before { margin-left: calc((var(--card-overlap) * -1) + var(--drag-gap)); }
+.card.dragging:hover, .hand.drag-active .card:hover { transform: none; }
 .card.disabled { opacity: .4; pointer-events: none; }
+.card-corner { position: absolute; top: 12px; left: 12px; display: grid; justify-items: center; gap: 2px; font-weight: 800; font-size: 1.7rem; line-height: 1; letter-spacing: 0; }
+
+@media (max-width: 640px) {
+  .hand { --card-overlap: 88px; --drag-gap: 54px; min-height: 204px; padding-left: 1.5rem; scroll-padding-left: 1.5rem; }
+  .card { width: 117px; height: 162px; }
+  .card-corner { font-size: 1.5rem; }
+}
 .hint { font-size: .93rem; color: #374151; margin-top: .4rem; }
 .log { margin-top: .8rem; font-size: .92rem; color: #374151; max-height: 180px; overflow: auto; }
 .log p { margin: .2rem 0; }
