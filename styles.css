@@ -5,6 +5,8 @@ body { font-family: system-ui, sans-serif; background: #f3f6fb; margin: 0; color
 .hidden { display: none; }
 .row, .actions, .status-row { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
 .actions { justify-content: center; }
+.share-row { display: grid; grid-template-columns: 1fr auto; gap: .8rem; align-items: center; }
+input { border: 1px solid #d1d5db; border-radius: 8px; padding: .55rem .7rem; font: inherit; color: #1f2937; min-width: 0; }
 button { border: 0; border-radius: 8px; padding: .5rem .9rem; background: #2563eb; color: #fff; cursor: pointer; transition: transform .08s ease, opacity .2s ease; }
 button:hover { transform: translateY(-1px); }
 button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
@@ -49,5 +51,6 @@ button.secondary { background: #111827; }
 .record-list p { margin: .28rem 0; }
 
 @media (max-width: 640px) {
+  .share-row { grid-template-columns: 1fr; }
   .record-counts { grid-template-columns: 1fr; }
 }
