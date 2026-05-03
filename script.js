@@ -29,6 +29,8 @@ const el = {
   playBtn: document.getElementById("playBtn"),
   passBtn: document.getElementById("passBtn"),
   arrangeBtn: document.getElementById("arrangeBtn"),
+  reshuffleBtn: document.getElementById("reshuffleBtn"),
+  reshuffleStatus: document.getElementById("reshuffleStatus"),
   newGameBtn: document.getElementById("newGameBtn"),
   lastAction: document.getElementById("lastAction"),
   log: document.getElementById("log"),
@@ -44,6 +46,7 @@ const client = {
   eventSource: null,
   selected: [],
   snapshot: null,
+  touchDrag: null,
 };
 
 function cardText(card) { return `${card.r}${card.s}`; }
@@ -136,15 +139,22 @@ function renderGame(data) {
   const currentName = data.players[data.currentPlayer]?.name || "Player";
   el.turnTitle.textContent = myTurn ? "Your Turn" : `${currentName}'s Turn`;
   el.pileLabel.textContent = `Pile: ${data.pile ? `${comboNames[data.pile.play.type]} - ${data.pile.cards.map(cardText).join(" ")}` : "none"}`;
-  el.manualHint.textContent = data.openingPending
-    ? `Opening move must include ${data.openingCard ? cardText(data.openingCard) : "the lowest card"}.`
-    : `Opponent has ${data.opponentCardCount} cards.`;
+  el.manualHint.textContent = data.openingPending ? "" : `Opponent has ${data.opponentCardCount} cards.`;
 
   el.playBtn.disabled = !myTurn;
   el.passBtn.disabled = !myTurn || data.openingPending;
-  el.arrangeBtn.disabled = client.playerId > 1;
+  el.arrangeBtn.disabled = client.playerId > 1 || data.hand.length <= 1;
+  renderReshuffleState(data);
   el.newGameBtn.classList.toggle("hidden", data.phase !== "ended");
   renderHand(data.hand);
+}
+
+function renderReshuffleState(data) {
+  const requests = data.reshuffleRequests || [false, false];
+  const mine = client.playerId <= 1 ? requests[client.playerId] : false;
+  el.reshuffleBtn.disabled = client.playerId > 1 || data.phase !== "play" || mine;
+  el.reshuffleBtn.textContent = mine ? "Reshuffle Requested" : "Request Reshuffle";
+  el.reshuffleStatus.textContent = `Reshuffle requests: Player 1 ${requests[0] ? "yes" : "no"} / Player 2 ${requests[1] ? "yes" : "no"}`;
 }
 
 function renderHand(hand) {
@@ -176,7 +186,14 @@ function renderHand(hand) {
     if (client.selected.includes(index)) node.classList.add("selected");
     node.innerHTML = `<span class="card-corner"><span>${card.r}</span><span>${card.s}</span></span>`;
     node.draggable = client.playerId <= 1;
-    node.onclick = () => toggleSelect(index);
+    node.onclick = () => {
+      if (node.dataset.suppressClick === "true") {
+        node.dataset.suppressClick = "false";
+        return;
+      }
+      toggleSelect(index);
+    };
+    node.onpointerdown = (event) => startTouchDrag(event, node, index);
     node.ondragstart = (event) => {
       node.classList.add("dragging");
       el.hand.classList.add("drag-active");
@@ -200,6 +217,66 @@ function renderHand(hand) {
     };
     el.hand.appendChild(node);
   });
+}
+
+function startTouchDrag(event, node, index) {
+  if (event.pointerType === "mouse" || client.playerId > 1) return;
+  client.touchDrag = {
+    from: index,
+    target: index,
+    started: false,
+    startX: event.clientX,
+    startY: event.clientY,
+    node,
+  };
+  node.setPointerCapture?.(event.pointerId);
+  node.onpointermove = (moveEvent) => updateTouchDrag(moveEvent);
+  node.onpointerup = (upEvent) => finishTouchDrag(upEvent);
+  node.onpointercancel = () => cancelTouchDrag();
+}
+
+function updateTouchDrag(event) {
+  const drag = client.touchDrag;
+  if (!drag) return;
+  const distance = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
+  if (!drag.started && distance < 10) return;
+
+  event.preventDefault();
+  drag.started = true;
+  drag.node.classList.add("dragging");
+  el.hand.classList.add("drag-active");
+
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest?.(".card");
+  if (target && el.hand.contains(target)) {
+    drag.target = [...el.hand.children].indexOf(target);
+    showDropHint(drag.target);
+  } else {
+    drag.target = event.clientX < el.hand.getBoundingClientRect().left + 24 ? 0 : client.snapshot.hand.length;
+    showDropHint(drag.target === client.snapshot.hand.length ? null : drag.target);
+  }
+}
+
+function finishTouchDrag(event) {
+  const drag = client.touchDrag;
+  if (!drag) return;
+  drag.node.onpointermove = null;
+  drag.node.onpointerup = null;
+  drag.node.onpointercancel = null;
+
+  if (drag.started) {
+    event.preventDefault();
+    drag.node.dataset.suppressClick = "true";
+    moveCard(drag.from, drag.target);
+  }
+  drag.node.classList.remove("dragging");
+  clearDropHints();
+  client.touchDrag = null;
+}
+
+function cancelTouchDrag() {
+  if (client.touchDrag?.node) client.touchDrag.node.classList.remove("dragging");
+  clearDropHints();
+  client.touchDrag = null;
 }
 
 function clearDropHints() {
@@ -282,6 +359,7 @@ el.arrangeBtn.onclick = () => {
   client.selected = [];
   sendAction("arrange");
 };
+el.reshuffleBtn.onclick = () => sendAction("requestReshuffle");
 el.newGameBtn.onclick = () => {
   client.selected = [];
   sendAction("newGame");

@@ -94,7 +94,7 @@ function beatsPlay(play, pilePlay) {
   if (!pilePlay) return true;
   const incomingIsCombo = play.power > 0;
   const pileIsCombo = pilePlay.power > 0;
-  if (incomingIsCombo && !pileIsCombo) return true;
+  if (incomingIsCombo !== pileIsCombo) return false;
   if (incomingIsCombo && pileIsCombo) {
     if (play.power !== pilePlay.power) return play.power > pilePlay.power;
     return play.tie.value > pilePlay.tie.value;
@@ -118,6 +118,7 @@ function createRoom() {
     openingCard: null,
     openingPending: true,
     passCount: 0,
+    reshuffleRequests: [false, false],
     lastAction: "-",
     log: [],
     records: [],
@@ -158,6 +159,7 @@ function publicView(room, playerId) {
     pile: room.pile,
     openingCard: room.openingCard,
     openingPending: room.openingPending,
+    reshuffleRequests: room.reshuffleRequests,
     lastAction: room.lastAction,
     log: room.log,
     records: room.records,
@@ -203,6 +205,7 @@ function deal(room, autoArrange) {
     player.hand = [];
     player.pickedDeck = null;
   });
+  room.reshuffleRequests = [false, false];
   room.phase = "pick";
   log(room, `${cardsPerPlayer} cards dealt to each player. Pick Deck A or Deck B to start.`);
 }
@@ -251,6 +254,17 @@ function play(room, playerId, indexes) {
   room.currentPlayer = 1 - room.currentPlayer;
 }
 
+function requestReshuffle(room, playerId) {
+  assertPlayer(room, playerId);
+  if (room.phase !== "play") throw new Error("Reshuffle can only be requested after the game starts.");
+  room.reshuffleRequests[playerId] = true;
+  log(room, `${room.players[playerId].name} requested a reshuffle.`);
+  if (room.reshuffleRequests.every(Boolean)) {
+    newGame(room);
+    log(room, "Both players agreed to reshuffle. Deal cards to restart.");
+  }
+}
+
 function pass(room, playerId) {
   assertPlayer(room, playerId);
   if (room.phase !== "play") throw new Error("The game is not in play.");
@@ -296,6 +310,7 @@ function newGame(room) {
   room.openingCard = null;
   room.openingPending = true;
   room.passCount = 0;
+  room.reshuffleRequests = [false, false];
   log(room, "New game ready. Deal cards to begin.");
 }
 
@@ -388,6 +403,7 @@ const server = http.createServer(async (req, res) => {
       else if (type === "pass") pass(room, playerId);
       else if (type === "arrange") arrange(room, playerId);
       else if (type === "reorder") reorder(room, playerId, payload.from, payload.to);
+      else if (type === "requestReshuffle") requestReshuffle(room, playerId);
       else if (type === "newGame") newGame(room);
       else if (type === "clearRecords") { room.records = []; log(room, "Win records cleared."); }
       else throw new Error("Unknown action.");
@@ -402,6 +418,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Big2 server running at http://localhost:${port}`);
-});
+if (require.main === module) {
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Big2 server running at http://localhost:${port}`);
+  });
+}
+
+module.exports = { beatsPlay, classifyPlay };
